@@ -6,12 +6,14 @@ const UploadForm = ({ onUploadSuccess }) => {
   const [video, setVideo] = useState(null);
   const [videoPreview, setVideoPreview] = useState("");
   const [uploadMessage, setUploadMessage] = useState("");
-  const [frames, setFrames] = useState([]); // State to hold frame images
+  const [frames, setFrames] = useState([]);
+  const [count, setCount] = useState(20);
+  const [size, setSize] = useState("1920x1240");
+  const [isLoading, setIsLoading] = useState(false); // Loading state
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     setVideo(file);
-    // Generate a preview URL for the video
     if (file) {
       setVideoPreview(URL.createObjectURL(file));
     }
@@ -19,8 +21,11 @@ const UploadForm = ({ onUploadSuccess }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsLoading(true); // Start loading state
     const formData = new FormData();
     formData.append("video", video);
+    formData.append("count", count);
+    formData.append("size", size);
 
     try {
       const res = await axios.post(
@@ -34,21 +39,44 @@ const UploadForm = ({ onUploadSuccess }) => {
       const { videoId, message, framePaths } = res.data;
 
       if (onUploadSuccess) {
-        onUploadSuccess(videoId); // Pass videoId to parent component
+        onUploadSuccess(videoId);
       }
 
-      setUploadMessage(message); // Update upload message
-      setFrames(framePaths); // Update frame paths
+      setUploadMessage(message);
+      setFrames(framePaths);
     } catch (err) {
       console.error(err);
-      setUploadMessage("Error uploading video"); // Handle errors
+      setUploadMessage("Error uploading video");
+    } finally {
+      setIsLoading(false); // Stop loading state
     }
   };
 
   return (
     <div>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <input className="mt-10 bg-transparent rounded-xl p-5 text-2xl flex ml-4" type="file" accept="video/*" onChange={handleFileChange} />
+        <input
+          type="file"
+          accept="video/*"
+          onChange={handleFileChange}
+          className="mt-10 bg-transparent rounded-xl p-5 text-2xl flex ml-4"
+        />
+        <div className="flex gap-4">
+          <input
+            type="number"
+            value={count}
+            onChange={(e) => setCount(e.target.value)}
+            placeholder="Number of frames"
+            className="p-2 rounded"
+          />
+          <input
+            type="text"
+            value={size}
+            onChange={(e) => setSize(e.target.value)}
+            placeholder="Frame size (e.g., 1920x1240)"
+            className="p-2 rounded"
+          />
+        </div>
         {videoPreview && (
           <div style={{ marginTop: "10px" }}>
             <video
@@ -58,25 +86,68 @@ const UploadForm = ({ onUploadSuccess }) => {
             />
           </div>
         )}
-        <button type="submit" className="p-4 bg-green-300 rounded-3xl">Upload Video</button>
+        <button type="submit" className="p-4 bg-green-300 rounded-3xl">
+          Upload Video
+        </button>
         {uploadMessage && (
-          <p className="text-2xl font-mono" style={{ marginTop: "10px" }}>{uploadMessage}</p> // Display the message
+          <p className="text-2xl font-mono" style={{ marginTop: "10px" }}>
+            {uploadMessage}
+          </p>
         )}
       </form>
-      {/* <div style={{ marginTop: "20px" }}>
-        {frames.length > 0 ? (
-          frames.map((frame, index) => (
-            <img
-              key={index}
-              src={`http://localhost:5000/uploads/${frame.path}`}
-              alt={`Frame ${index}`}
-              style={{ width: "100px", height: "auto", margin: "5px" }}
-            />
-          ))
+
+      {isLoading && (
+        <div style={{ marginTop: "20px", textAlign: "center" }}>
+          <p className="text-2xl font-mono">Processing video, please wait...</p>
+        </div>
+      )}
+
+      <div style={{ marginTop: "20px" }}>
+        {frames.length > 0 && !isLoading ? (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))",
+              gap: "10px",
+              maxWidth: "600px",
+              margin: "0 auto",
+            }}
+          >
+            {frames.map((frame, index) => (
+              <div key={index} style={{ textAlign: "center" }}>
+                <img
+                  src={`http://localhost:5000/${frame.replace(/\\/g, "/")}`}
+                  alt={`Frame ${index}`}
+                  style={{
+                    width: "100%",
+                    height: "auto",
+                    borderRadius: "8px",
+                    objectFit: "cover",
+                  }}
+                />
+                <a
+                  href={`http://localhost:5000/${frame.replace(/\\/g, "/")}`}
+                  download={`frame-${index}.png`}
+                  style={{
+                    display: "inline-block",
+                    marginTop: "5px",
+                    backgroundColor: "#4CAF50",
+                    color: "white",
+                    padding: "5px 10px",
+                    borderRadius: "5px",
+                    textDecoration: "none",
+                    fontSize: "12px",
+                  }}
+                >
+                  Download
+                </a>
+              </div>
+            ))}
+          </div>
         ) : (
-          <p>No frames available</p>
+          !isLoading && <p>No frames available</p>
         )}
-      </div> */}
+      </div>
     </div>
   );
 };

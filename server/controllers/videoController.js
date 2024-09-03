@@ -18,6 +18,7 @@ const upload = multer({ storage: storage });
 
 const uploadVideo = async (req, res) => {
   const videoPath = req.file.path;
+  const { count, size } = req.body; // Get count and size from the request body
 
   try {
     // Save video details to the database
@@ -33,10 +34,10 @@ const uploadVideo = async (req, res) => {
     // Extract frames and save to database
     ffmpeg(videoPath)
       .screenshots({
-        count: 20,
+        count: count || 20, // Use the count from the request, or default to 20
         folder: "uploads/",
         filename: "frame-%i.png",
-        size: "1920x1240",
+        size: size || "1920 x 1240", // Use the size from the request, or default to "1920x1240"
       })
       .on("filenames", async (filenames) => {
         console.log("Will generate " + filenames.join(", "));
@@ -63,7 +64,7 @@ const uploadVideo = async (req, res) => {
         console.log("Screenshots taken");
         res.status(200).json({
           videoId: video._id,
-          message: "Done, creating the image",
+          message: "Done creating the image",
           framePaths: framePaths, // Include framePaths in the response
         });
       })
